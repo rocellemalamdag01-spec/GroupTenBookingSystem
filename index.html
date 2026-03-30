@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CebuParadise — Discover & Book Cebu's Finest</title>
+  <meta name="description" content="Book the top 10 tourist spots in Cebu, Philippines. Whale sharks, Kawasan Falls, Bantayan Island & more.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Josefin+Sans:wght@300;400;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ══ CUSTOM CURSOR ══════════════════════════════════════════ -->
+  <div class="cursor"     id="cursor"></div>
+  <div class="cursor-dot" id="cursorDot"></div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       AUTH OVERLAY
+       Shown on first visit. Hidden once user logs in.
+       ══════════════════════════════════════════════════════════ -->
+  <div id="authOverlay">
+    <!-- Background -->
+    <div class="auth-bg">
+      <img class="auth-bg-img"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Bantayan-Island-Cebu-Philippines.jpg/1920px-Bantayan-Island-Cebu-Philippines.jpg"
+        alt="Bantayan Island, Cebu"
+        onerror="this.style.opacity=0">
+      <div class="auth-overlay-grad"></div>
+    </div>
+    <div id="authParticles"></div>
+
+    <!-- Login / Register Card -->
+    <div class="auth-box">
+      <div class="auth-logo">Cebu<span>Paradise</span></div>
+      <div class="auth-tagline">✦ The Pearl of the South ✦</div>
+
+      <!-- Tab Switcher -->
+      <div class="auth-tabs">
+        <button class="auth-tab-btn active" id="tabLogin"    onclick="showAuthTab('login')">Sign In</button>
+        <button class="auth-tab-btn"        id="tabRegister" onclick="showAuthTab('register')">Register</button>
+      </div>
+
+      <!-- ── LOGIN FORM ── -->
+      <div id="loginForm">
+        <div class="auth-error" id="loginError"></div>
+        <div class="auth-form">
+          <div class="auth-field">
+            <label class="auth-label">Email Address</label>
+            <input class="auth-input" id="loginEmail" type="email"
+              placeholder="juan@example.com" autocomplete="email">
+          </div>
+          <div class="auth-field">
+            <label class="auth-label">Password</label>
+            <input class="auth-input" id="loginPassword" type="password"
+              placeholder="••••••••" autocomplete="current-password">
+          </div>
+          <button class="auth-submit" onclick="doLogin()">🌴 &nbsp;Sign In to Paradise</button>
+        </div>
+        <div class="auth-divider" style="margin-top:18px">or continue as</div>
+        <button class="auth-guest" style="margin-top:10px;width:100%" onclick="doGuest()">
+          🌊 &nbsp;Browse as Guest
+        </button>
+      </div>
+
+      <!-- ── REGISTER FORM ── -->
+      <div id="registerForm" style="display:none">
+        <div class="auth-error" id="registerError"></div>
+        <div class="auth-form">
+          <div class="auth-field">
+            <label class="auth-label">Full Name</label>
+            <input class="auth-input" id="regName" type="text"
+              placeholder="Juan dela Cruz" autocomplete="name">
+          </div>
+          <div class="auth-field">
+            <label class="auth-label">Email Address</label>
+            <input class="auth-input" id="regEmail" type="email"
+              placeholder="juan@example.com" autocomplete="email">
+          </div>
+          <div class="auth-field">
+            <label class="auth-label">Password</label>
+            <input class="auth-input" id="regPassword" type="password"
+              placeholder="At least 6 characters" autocomplete="new-password">
+          </div>
+          <div class="auth-field">
+            <label class="auth-label">Confirm Password</label>
+            <input class="auth-input" id="regConfirm" type="password"
+              placeholder="Repeat password" autocomplete="new-password">
+          </div>
+          <button class="auth-submit" onclick="doRegister()">🌺 &nbsp;Create My Account</button>
+        </div>
+      </div>
+    </div><!-- /auth-box -->
+  </div><!-- /authOverlay -->
+
+
+  <!-- ══════════════════════════════════════════════════════════
+       MAIN APP
+       Hidden until user is authenticated.
+       ══════════════════════════════════════════════════════════ -->
+  <div id="app">
+
+    <!-- ── NAVIGATION ── -->
+    <nav id="navbar">
+      <a class="nav-logo" href="#hero" onclick="goTo('hero');return false;">
+        Cebu<span>Paradise</span>
+      </a>
+      <ul class="nav-links">
+        <li><a href="#spots"     onclick="goTo('spots');return false;">Destinations</a></li>
+        <li><a href="#dashboard" onclick="goTo('dashboard');return false;">My Bookings</a></li>
+        <li id="navAdminLink" style="display:none">
+          <a href="#admin" onclick="goTo('admin');return false;">Admin</a>
+        </li>
+      </ul>
+      <div class="nav-user">
+        <div class="nav-avatar"   id="navAvatar">?</div>
+        <span class="nav-username" id="navUsername"></span>
+        <button class="nav-logout" onclick="doLogout()">Log Out</button>
+      </div>
+    </nav>
+
+    <!-- ── HERO ── -->
+    <section class="hero" id="hero">
+      <img class="hero-bg-img"
+        src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Bantayan-Island-Cebu-Philippines.jpg/1920px-Bantayan-Island-Cebu-Philippines.jpg"
+        alt="Bantayan Island, Cebu, Philippines"
+        onerror="this.style.background='linear-gradient(160deg,#023e8a,#0077b6,#f77f00)';this.src=''">
+      <div class="hero-gradient"></div>
+      <div class="hero-waves"></div>
+      <div id="heroParticles"></div>
+      <div class="hero-content">
+        <div class="hero-eyebrow">✦ The Pearl of the South · Philippines ✦</div>
+        <div class="hero-welcome" id="heroWelcome"></div>
+        <h1 class="hero-title">Discover<br><em>Cebu</em></h1>
+        <p class="hero-subtitle">
+          10 Iconic Destinations &nbsp;·&nbsp; Seamless Bookings &nbsp;·&nbsp; Unforgettable Memories
+        </p>
+        <div class="hero-btns">
+          <button class="btn-primary" onclick="goTo('spots')">Explore Destinations</button>
+          <button class="btn-outline"  onclick="goTo('dashboard')">My Bookings</button>
+        </div>
+      </div>
+      <div class="scroll-hint">Scroll</div>
+    </section>
+
+    <!-- ── DESTINATIONS ── -->
+    <section class="spots-section" id="spots">
+      <div class="spots-header">
+        <div class="section-eyebrow">✦ Top 10 Destinations</div>
+        <h2 class="section-title">Cebu's Finest Wonders</h2>
+        <p class="section-sub">
+          From whale sharks to waterfalls, ancient shrines to white-sand islands —
+          your perfect Cebu adventure starts here.
+        </p>
+      </div>
+      <!-- Cards injected by app.js renderSpots() -->
+      <div class="spots-grid" id="spotsGrid"></div>
+    </section>
+
+    <!-- ── MY BOOKINGS DASHBOARD ── -->
+    <section class="dash-section" id="dashboard">
+      <div class="dash-header">
+        <div>
+          <div class="section-eyebrow">✦ My Account</div>
+          <h2 class="section-title">My Bookings</h2>
+          <p class="section-sub">Track and manage all your confirmed Cebu adventures.</p>
+        </div>
+        <div class="booking-controls">
+          <input class="search-inp" type="text" id="searchInput"
+            placeholder="Search destination, name, ref…" oninput="filterBookings()">
+          <button class="filter-btn act" onclick="setFilter('all',this)">All</button>
+          <button class="filter-btn"     onclick="setFilter('confirmed',this)">Confirmed</button>
+          <button class="filter-btn"     onclick="setFilter('cancelled',this)">Cancelled</button>
+        </div>
+      </div>
+      <!-- Stats bar -->
+      <div class="stats-bar">
+        <div class="stat-item"><div class="stat-num" id="stTotal">0</div>    <div class="stat-lbl">Total</div></div>
+        <div class="stat-item"><div class="stat-num" id="stConfirmed">0</div><div class="stat-lbl">Confirmed</div></div>
+        <div class="stat-item"><div class="stat-num" id="stUpcoming">0</div> <div class="stat-lbl">Upcoming</div></div>
+        <div class="stat-item"><div class="stat-num" id="stSpots">0</div>    <div class="stat-lbl">Spots</div></div>
+      </div>
+      <!-- Booking rows injected by renderBookings() -->
+      <div class="bookings-list" id="bookingsList"></div>
+    </section>
+
+    <!-- ── ADMIN PANEL (admin role only) ── -->
+    <section class="admin-section" id="admin" style="display:none">
+      <div class="section-eyebrow">✦ Admin Console</div>
+      <h2 class="section-title">Registered Users</h2>
+      <p class="section-sub" style="color:rgba(255,255,255,.45);margin-bottom:40px">
+        All accounts stored in the CebuParadise user database.
+      </p>
+      <div class="users-table-wrap">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Joined</th>
+              <th>Bookings</th>
+            </tr>
+          </thead>
+          <!-- Rows injected by renderUsersTable() -->
+          <tbody id="usersTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ── FOOTER ── -->
+    <footer id="about">
+      <div class="footer-inner">
+        <div class="footer-logo">Cebu<span>Paradise</span></div>
+        <ul class="footer-links">
+          <li><a href="#spots"     onclick="goTo('spots');return false;">Destinations</a></li>
+          <li><a href="#dashboard" onclick="goTo('dashboard');return false;">My Bookings</a></li>
+          <li><a href="#">Privacy</a></li>
+          <li><a href="#">Contact</a></li>
+        </ul>
+        <p class="footer-copy">© 2026 CebuParadise · Made with 🌊 for every explorer</p>
+      </div>
+    </footer>
+
+    <!-- ── SPOT DETAIL MODAL ── -->
+    <div class="modal-overlay" id="viewModal">
+      <div class="modal">
+        <button class="modal-close" onclick="closeModal('viewModal')" aria-label="Close">✕</button>
+
+        <!-- Hero image -->
+        <div class="modal-hero-wrap">
+          <img class="modal-hero-img" id="modalHeroImg" src="" alt="">
+          <div class="modal-hero-grad"></div>
+        </div>
+
+        <div class="modal-body">
+          <!-- Header -->
+          <h2 class="modal-title"     id="modalTitle"></h2>
+          <div class="modal-location" id="modalLoc"></div>
+          <div class="modal-tags"     id="modalTags"></div>
+          <p  class="modal-desc"      id="modalDesc"></p>
+
+          <!-- Tab navigation -->
+          <div class="modal-tabs">
+            <button class="tab-btn active" onclick="switchTab('gallery')">📷 Photos</button>
+            <button class="tab-btn"        onclick="switchTab('accommodations')">🏨 Stay</button>
+            <button class="tab-btn"        onclick="switchTab('booking')">📋 Book</button>
+          </div>
+
+          <!-- Tab: Photos -->
+          <div class="tab-content active" id="tab-gallery">
+            <div class="photo-grid" id="photoGrid"></div>
+          </div>
+
+          <!-- Tab: Accommodations -->
+          <div class="tab-content" id="tab-accommodations">
+            <div class="accomm-grid" id="accommGrid"></div>
+          </div>
+
+          <!-- Tab: Booking Form -->
+          <div class="tab-content" id="tab-booking">
+            <div class="book-form">
+              <div class="form-group">
+                <label for="bkName">Full Name *</label>
+                <input type="text"  id="bkName"    placeholder="Juan dela Cruz">
+              </div>
+              <div class="form-group">
+                <label for="bkEmail">Email *</label>
+                <input type="email" id="bkEmail"   placeholder="juan@example.com">
+              </div>
+              <div class="form-group">
+                <label for="bkPhone">Phone</label>
+                <input type="tel"   id="bkPhone"   placeholder="+63 917 123 4567">
+              </div>
+              <div class="form-group">
+                <label for="bkGuests">Guests</label>
+                <select id="bkGuests">
+                  <option>1 Guest</option><option>2 Guests</option>
+                  <option>3 Guests</option><option>4 Guests</option>
+                  <option>5 Guests</option><option>6+ Guests</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="bkCheckin">Check-in *</label>
+                <input type="date" id="bkCheckin">
+              </div>
+              <div class="form-group">
+                <label for="bkCheckout">Check-out *</label>
+                <input type="date" id="bkCheckout">
+              </div>
+              <div class="form-group full">
+                <label for="bkAccomm">Accommodation</label>
+                <select id="bkAccomm"></select>
+              </div>
+              <div class="form-group full">
+                <label for="bkNotes">Special Requests</label>
+                <textarea id="bkNotes" placeholder="Dietary needs, accessibility, special occasions…"></textarea>
+              </div>
+            </div>
+            <button class="submit-btn" onclick="submitBooking()">🌴 &nbsp;Confirm Booking</button>
+          </div>
+          <!-- /tab-booking -->
+
+        </div><!-- /modal-body -->
+      </div><!-- /modal -->
+    </div><!-- /modal-overlay -->
+
+  </div><!-- /app -->
+
+  <!-- ══ TOAST NOTIFICATION ══════════════════════════════════════ -->
+  <div class="toast" id="toast">
+    <div class="toast-title" id="toastTitle"></div>
+    <div class="toast-msg"   id="toastMsg"></div>
+  </div>
+
+  <!-- JavaScript (must be last — depends on DOM being ready) -->
+  <script src="app.js"></script>
+
+</body>
+</html>
