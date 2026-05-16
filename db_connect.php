@@ -12,7 +12,7 @@ function gtbs_db_config(): array
     'host' => getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: '127.0.0.1',
     'user' => getenv('DB_USER') ?: getenv('MYSQLUSER') ?: 'root',
     'pass' => getenv('DB_PASS') ?: getenv('MYSQLPASSWORD') ?: 'JiJxNUhPorwxKikAwulGOHnHiamZUWul',
-    'name' => getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: 'gtbs',
+    'name' => getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: 'railway',
     'port' => (int)(getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: '3306'),
   ];
 }
