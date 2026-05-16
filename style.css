@@ -482,7 +482,15 @@ section { padding:104px 56px; }
 .book-form { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
 .form-group { display:flex; flex-direction:column; gap:6px; }
 .form-group.full { grid-column:span 2; }
-.form-group label { font-size:.66rem; letter-spacing:2px; text-transform:uppercase; opacity:.55; font-weight:600; }
+/* only direct child labels of form-group, not nested labels inside pm-option */
+.form-group > label,
+.form-group > .auth-label {
+  font-size:.66rem;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  opacity:.55;
+  font-weight:600;
+}
 .form-group input,
 .form-group select,
 .form-group textarea {
@@ -547,10 +555,11 @@ section { padding:104px 56px; }
 /* Inline payment picker (below accommodation) */
 .payment-picker-wrap {
   grid-column:span 2;
+  display:block !important;
   padding:20px;
-  border:2px solid rgba(0,119,182,.15);
+  border:2px solid rgba(0,119,182,.2);
   border-radius:16px;
-  background:linear-gradient(135deg, rgba(2,62,138,.05) 0%, rgba(0,119,182,.08) 100%);
+  background:linear-gradient(135deg, rgba(2,62,138,.06) 0%, rgba(0,119,182,.10) 100%);
 }
 .payment-picker-label {
   font-size:.66rem;
@@ -584,6 +593,7 @@ section { padding:104px 56px; }
   display:block;
   min-width:0;
   position:relative;
+  opacity:1 !important;  /* prevent inheritance from .form-group > label rules */
 }
 .pm-option input[type="radio"] {
   position:absolute;
@@ -733,7 +743,7 @@ section { padding:104px 56px; }
   gap:14px;
 }
 .card-fields .form-group.full { grid-column:span 2; }
-.card-fields .form-group label { font-size:.62rem; letter-spacing:2px; text-transform:uppercase; opacity:.5; font-weight:600; }
+.card-fields .form-group > label { font-size:.62rem; letter-spacing:2px; text-transform:uppercase; opacity:.5; font-weight:600; }
 .card-fields .form-group input {
   padding:12px 15px; border:2px solid rgba(0,0,0,.09); border-radius:11px;
   font-size:.9rem; background:white; outline:none; cursor:none;
@@ -755,7 +765,7 @@ section { padding:104px 56px; }
 .ewallet-title { font-weight:700; font-size:.95rem; margin-bottom:3px; }
 .ewallet-hint  { font-size:.72rem; opacity:.5; letter-spacing:.5px; }
 
-.ewallet-details .form-group label { font-size:.62rem; letter-spacing:2px; text-transform:uppercase; opacity:.5; font-weight:600; }
+.ewallet-details .form-group > label { font-size:.62rem; letter-spacing:2px; text-transform:uppercase; opacity:.5; font-weight:600; }
 .ewallet-details .form-group input {
   padding:13px 16px; border:2px solid rgba(0,0,0,.09); border-radius:11px;
   font-size:.9rem; background:white; outline:none; cursor:none;
@@ -801,7 +811,7 @@ section { padding:104px 56px; }
 .bank-account-value {
   font-weight:700; color:var(--deep); font-size:.88rem;
 }
-.bank-details .form-group label { font-size:.62rem; letter-spacing:2px; text-transform:uppercase; opacity:.5; font-weight:600; }
+.bank-details .form-group > label { font-size:.62rem; letter-spacing:2px; text-transform:uppercase; opacity:.5; font-weight:600; }
 .bank-details .form-group input {
   padding:13px 16px; border:2px solid rgba(0,0,0,.09); border-radius:11px;
   font-size:.9rem; background:white; outline:none; cursor:none;
