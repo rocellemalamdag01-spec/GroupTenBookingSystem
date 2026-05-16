@@ -128,8 +128,15 @@ function gtbs_pdo(): PDO
       ) ENGINE=InnoDB;
     ");
 
-    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_bookings_user_created ON bookings(user_id, created_at);");
-    $pdo->exec("CREATE INDEX IF NOT EXISTS idx_bookings_user_status ON bookings(user_id, status);");
+    // CREATE INDEX IF NOT EXISTS is not supported in MySQL 5.7 / early 8.0 — check first
+    $idxCheck = $pdo->query("SHOW INDEX FROM bookings WHERE Key_name = 'idx_bookings_user_created'")->fetchColumn();
+    if (!$idxCheck) {
+      $pdo->exec("CREATE INDEX idx_bookings_user_created ON bookings(user_id, created_at);");
+    }
+    $idxCheck2 = $pdo->query("SHOW INDEX FROM bookings WHERE Key_name = 'idx_bookings_user_status'")->fetchColumn();
+    if (!$idxCheck2) {
+      $pdo->exec("CREATE INDEX idx_bookings_user_status ON bookings(user_id, status);");
+    }
     @file_put_contents($schemaMarker, date('c'));
   }
 
