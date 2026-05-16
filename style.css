@@ -517,7 +517,8 @@ section { padding:104px 56px; }
   border-radius:20px;
   padding:28px;
   position:relative;
-  overflow:hidden;
+  overflow:visible;
+  scroll-margin-top:80px;
 }
 .payment-section::before {
   content:'';
@@ -546,13 +547,24 @@ section { padding:104px 56px; }
 /* ── Payment Method Selector ── */
 .payment-methods {
   display:grid;
-  grid-template-columns:repeat(5, 1fr);
+  grid-template-columns:repeat(5, minmax(0, 1fr));
   gap:10px;
   margin-bottom:24px;
+  min-height:120px;
 }
 
-.pm-option { cursor:none; }
-.pm-option input[type="radio"] { display:none; }
+.pm-option {
+  cursor:none;
+  display:block;
+  min-width:0;
+}
+.pm-option input[type="radio"] {
+  position:absolute;
+  opacity:0;
+  width:1px;
+  height:1px;
+  pointer-events:none;
+}
 
 .pm-card {
   border:2px solid rgba(0,0,0,.09);
@@ -564,6 +576,7 @@ section { padding:104px 56px; }
   cursor:none;
   position:relative;
   overflow:hidden;
+  min-height:96px;
 }
 .pm-card::after {
   content:'';

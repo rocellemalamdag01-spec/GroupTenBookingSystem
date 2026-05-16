@@ -606,6 +606,12 @@ function switchTab(tab) {
   document.getElementById('tab-' + tab).classList.add('active');
   const idx = ['gallery', 'accommodations', 'booking'].indexOf(tab);
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+
+  if (tab === 'booking') {
+    requestAnimationFrame(() => {
+      document.querySelector('.payment-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }
 }
 
 document.getElementById('viewModal').addEventListener('click', function(e) {
@@ -630,7 +636,10 @@ function resetPaymentSection() {
   /* Uncheck all radios */
   document.querySelectorAll('input[name="payMethod"]').forEach(r => r.checked = false);
   /* Deselect all PM cards */
-  document.querySelectorAll('.pm-option').forEach(o => o.querySelector('.pm-card').style.background = '');
+  document.querySelectorAll('.pm-option').forEach(o => {
+    const card = o.querySelector('.pm-card');
+    if (card) card.style.background = '';
+  });
   /* Hide all sub-panels */
   document.getElementById('cardDetails').classList.remove('active');
   document.getElementById('ewalletDetails').classList.remove('active');
@@ -847,6 +856,15 @@ async function submitBooking() {
   resetPaymentSection();
 }
 
+function formatBookingPayment(b) {
+  const summary = (b.paySummary || '').trim();
+  const method  = (b.payMethod || '').trim();
+  if (summary) return `<div class="booking-pay-badge">💳 ${summary}</div>`;
+  if (method && PAY_LABELS[method]) return `<div class="booking-pay-badge">💳 ${PAY_LABELS[method]}</div>`;
+  if (method) return `<div class="booking-pay-badge">💳 ${method}</div>`;
+  return '';
+}
+
 /* ══════════════════════════════════════════════
    BOOKINGS DASHBOARD
    ══════════════════════════════════════════════ */
@@ -880,7 +898,7 @@ function renderBookings(filter, status) {
         <div class="booking-spot">${b.spotName}</div>
         <div class="booking-meta">${b.name} · ${b.guests}</div>
         <div class="booking-ref">Ref: ${b.ref}</div>
-        ${b.paySummary ? `<div class="booking-pay-badge">💳 ${b.paySummary}</div>` : ''}
+        ${formatBookingPayment(b)}
         <div class="mini-btns">
           <button class="mini-btn vm"  onclick="openView(${b.spotId})">View Spot</button>
           <button class="mini-btn"     onclick="cancelBooking(${b.id})" ${b.status !== 'confirmed' ? 'disabled' : ''}>
