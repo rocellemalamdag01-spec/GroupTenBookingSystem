@@ -1,34 +1,56 @@
 <?php
 declare(strict_types=1);
 /**
- * Minimal DB connection helper for local XAMPP usage.
- * Update credentials if your MySQL setup differs.
+ * Database connection for local XAMPP and Railway (env-driven).
+ * Set DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT in Railway,
+ * or use the MYSQL* variables from a linked MySQL service.
  */
+
+function gtbs_db_config(): array
+{
+  return [
+    'host' => getenv('DB_HOST') ?: getenv('MYSQLHOST') ?: '127.0.0.1',
+    'user' => getenv('DB_USER') ?: getenv('MYSQLUSER') ?: 'root',
+    'pass' => getenv('DB_PASS') ?: getenv('MYSQLPASSWORD') ?: 'JiJxNUhPorwxKikAwulGOHnHiamZUWul',
+    'name' => getenv('DB_NAME') ?: getenv('MYSQLDATABASE') ?: 'gtbs',
+    'port' => (int)(getenv('DB_PORT') ?: getenv('MYSQLPORT') ?: '3306'),
+  ];
+}
+
+function gtbs_is_local_db(array $cfg): bool
+{
+  $host = strtolower(trim($cfg['host']));
+  return $host === '' || $host === 'localhost' || $host === '127.0.0.1';
+}
+
 function gtbs_pdo(): PDO
 {
   static $pdo = null;
   if ($pdo instanceof PDO) {
     return $pdo;
   }
-  // 127.0.0.1 is usually faster/more reliable than localhost on Windows.
-  $host = '127.0.0.1';
-  $db   = 'gtbs';
-  $user = 'root';
-  $pass = '';
+
+  $cfg = gtbs_db_config();
+  $host = $cfg['host'];
+  $db = $cfg['name'];
+  $user = $cfg['user'];
+  $pass = $cfg['pass'];
+  $port = $cfg['port'];
   $charset = 'utf8mb4';
 
-  // One-time schema bootstrap marker to avoid running DDL on every request.
+  $pdoOptions = [
+    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+    PDO::ATTR_TIMEOUT => 5,
+  ];
+
   $schemaMarker = __DIR__ . '/.schema_initialized';
   $needsBootstrap = !is_file($schemaMarker);
+  $isLocal = gtbs_is_local_db($cfg);
 
-  if ($needsBootstrap) {
-    // Connect once without selecting a database so we can CREATE it.
-    $dsnNoDb = "mysql:host={$host};charset={$charset}";
-    $pdoNoDb = new PDO($dsnNoDb, $user, $pass, [
-      PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-      PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-      PDO::ATTR_TIMEOUT => 5,
-    ]);
+  if ($needsBootstrap && $isLocal) {
+    $dsnNoDb = "mysql:host={$host};port={$port};charset={$charset}";
+    $pdoNoDb = new PDO($dsnNoDb, $user, $pass, $pdoOptions);
 
     $pdoNoDb->exec(
       "CREATE DATABASE IF NOT EXISTS `{$db}`
@@ -37,15 +59,16 @@ function gtbs_pdo(): PDO
     );
   }
 
-  $dsn = "mysql:host={$host};dbname={$db};charset={$charset}";
-  $pdo = new PDO($dsn, $user, $pass, [
-    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    PDO::ATTR_TIMEOUT => 5,
-  ]);
+  $dsn = "mysql:host={$host};port={$port};dbname={$db};charset={$charset}";
+  try {
+    $pdo = new PDO($dsn, $user, $pass, $pdoOptions);
+  } catch (PDOException $e) {
+    http_response_code(500);
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode(['ok' => false, 'error' => 'Database connection failed: ' . $e->getMessage()]);
+    exit;
+  }
 
-  // If the marker exists but tables are missing (e.g. DB was dropped),
-  // re-run bootstrap to keep the app self-healing.
   try {
     $hasUsers = (bool)$pdo->query("SHOW TABLES LIKE 'users'")->fetchColumn();
     $hasBookings = (bool)$pdo->query("SHOW TABLES LIKE 'bookings'")->fetchColumn();
@@ -57,7 +80,6 @@ function gtbs_pdo(): PDO
   }
 
   if ($needsBootstrap) {
-    // Create schema only once on fresh setup.
     $pdo->exec("
       CREATE TABLE IF NOT EXISTS users (
         id VARCHAR(64) NOT NULL PRIMARY KEY,
@@ -113,4 +135,3 @@ function gtbs_pdo(): PDO
 
   return $pdo;
 }
-
