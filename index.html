@@ -322,6 +322,14 @@
                       <div class="pm-desc">PayMaya / Maya</div>
                     </div>
                   </label>
+                  <label class="pm-option" data-method="bank">
+                    <input type="radio" name="payMethod" value="bank" onchange="onPayMethodChange(this)">
+                    <div class="pm-card">
+                      <div class="pm-icon">🏛️</div>
+                      <div class="pm-label">Bank Transfer</div>
+                      <div class="pm-desc">Online banking</div>
+                    </div>
+                  </label>
                   <label class="pm-option" data-method="cash">
                     <input type="radio" name="payMethod" value="cash" onchange="onPayMethodChange(this)">
                     <div class="pm-card">
@@ -401,6 +409,42 @@
                 </div>
                 <div class="ewallet-note">
                   💡 You will receive a payment prompt on your <span id="ewalletApp">GCash</span> app after confirming the booking.
+                </div>
+              </div>
+
+              <!-- Bank Transfer Details -->
+              <div class="bank-details" id="bankDetails">
+                <div class="bank-info">
+                  <div class="bank-header">
+                    <div class="bank-icon">🏛️</div>
+                    <div>
+                      <div class="bank-title">Bank Transfer Details</div>
+                      <div class="bank-hint">Transfer to our official bank account</div>
+                    </div>
+                  </div>
+                  <div class="bank-account-box">
+                    <div class="bank-account-row">
+                      <span class="bank-account-label">Bank</span>
+                      <span class="bank-account-value">BDO Unibank</span>
+                    </div>
+                    <div class="bank-account-row">
+                      <span class="bank-account-label">Account Name</span>
+                      <span class="bank-account-value">CebuParadise Tourism Inc.</span>
+                    </div>
+                    <div class="bank-account-row">
+                      <span class="bank-account-label">Account Number</span>
+                      <span class="bank-account-value">0012 3456 7890</span>
+                    </div>
+                  </div>
+                  <div class="form-group full" style="margin-top:14px">
+                    <label for="bankRefNumber">Transfer Reference / Sender's Name *</label>
+                    <input type="text" id="bankRefNumber"
+                      placeholder="e.g. Juan dela Cruz – CP123456"
+                      autocomplete="off">
+                  </div>
+                  <div class="bank-note">
+                    💡 Please use your booking reference as the transfer note. Your booking will be confirmed once payment is verified (within 1–2 banking hours).
+                  </div>
                 </div>
               </div>
 
