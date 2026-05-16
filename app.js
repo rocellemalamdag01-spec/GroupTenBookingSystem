@@ -516,8 +516,8 @@ window.addEventListener('scroll', () =>
 function renderSpots() {
   document.getElementById('spotsGrid').innerHTML = SPOTS.map((s, i) => `
     <div class="spot-card reveal" style="transition-delay:${i * .07}s">
-      <img class="spot-img" src="${s.cardImg}" alt="${s.name}" loading="lazy"
-        onerror="this.style.cssText='width:100%;height:100%;background:linear-gradient(135deg,#0077b6,#00b4d8)';this.src=''">
+      <img class="spot-img" src="${s.cardImg}" alt="${s.name}" loading="lazy" decoding="async"
+        onerror="this.onerror=null;this.src='';this.style.cssText='width:100%;height:100%;min-height:220px;background:linear-gradient(135deg,#0077b6,#00b4d8)'">
       <div class="spot-overlay"></div>
       <div class="spot-badge">${s.badge}</div>
       <div class="spot-info">
@@ -609,7 +609,7 @@ function switchTab(tab) {
 
   if (tab === 'booking') {
     requestAnimationFrame(() => {
-      document.querySelector('.payment-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      document.querySelector('.payment-picker-wrap, .payment-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
 }

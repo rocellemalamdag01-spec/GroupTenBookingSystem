@@ -12,7 +12,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Josefin+Sans:wght@300;400;600;700&family=Dancing+Script:wght@700&display=swap" rel="stylesheet">
 
   <!-- Stylesheet -->
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -285,66 +285,61 @@
                 <label for="bkAccomm">Accommodation</label>
                 <select id="bkAccomm"></select>
               </div>
+
+              <div class="form-group full payment-picker-wrap">
+                <label class="payment-picker-label">Payment Method *</label>
+                <p class="payment-picker-hint">Choose how you would like to pay for your booking</p>
+                <div class="payment-methods" id="paymentMethods">
+                  <label class="pm-option" data-method="debit">
+                    <input type="radio" name="payMethod" value="debit" onchange="onPayMethodChange(this)">
+                    <div class="pm-card">
+                      <div class="pm-icon">🏦</div>
+                      <div class="pm-label">Debit Card</div>
+                      <div class="pm-desc">Visa / Mastercard</div>
+                    </div>
+                  </label>
+                  <label class="pm-option" data-method="credit">
+                    <input type="radio" name="payMethod" value="credit" onchange="onPayMethodChange(this)">
+                    <div class="pm-card">
+                      <div class="pm-icon">💳</div>
+                      <div class="pm-label">Credit Card</div>
+                      <div class="pm-desc">Visa / Mastercard / Amex</div>
+                    </div>
+                  </label>
+                  <label class="pm-option" data-method="gcash">
+                    <input type="radio" name="payMethod" value="gcash" onchange="onPayMethodChange(this)">
+                    <div class="pm-card">
+                      <div class="pm-icon">📱</div>
+                      <div class="pm-label">GCash</div>
+                      <div class="pm-desc">Mobile e-wallet</div>
+                    </div>
+                  </label>
+                  <label class="pm-option" data-method="paymaya">
+                    <input type="radio" name="payMethod" value="paymaya" onchange="onPayMethodChange(this)">
+                    <div class="pm-card">
+                      <div class="pm-icon">🟢</div>
+                      <div class="pm-label">Maya</div>
+                      <div class="pm-desc">PayMaya / Maya</div>
+                    </div>
+                  </label>
+                  <label class="pm-option" data-method="cash">
+                    <input type="radio" name="payMethod" value="cash" onchange="onPayMethodChange(this)">
+                    <div class="pm-card">
+                      <div class="pm-icon">💵</div>
+                      <div class="pm-label">Cash</div>
+                      <div class="pm-desc">Pay on arrival</div>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
               <div class="form-group full">
                 <label for="bkNotes">Special Requests</label>
                 <textarea id="bkNotes" placeholder="Dietary needs, accessibility, special occasions…"></textarea>
               </div>
             </div>
 
-            <!-- ══ PAYMENT / TRANSACTION SECTION ══ -->
-            <div class="payment-section">
-              <div class="payment-header">
-                <span class="payment-icon">💳</span>
-                <div>
-                  <div class="payment-title">Payment Method</div>
-                  <div class="payment-sub">Choose how you'd like to pay for your booking</div>
-                </div>
-              </div>
-
-              <!-- Payment Method Selector -->
-              <div class="payment-methods">
-                <label class="pm-option" data-method="debit">
-                  <input type="radio" name="payMethod" value="debit" onchange="onPayMethodChange(this)">
-                  <div class="pm-card">
-                    <div class="pm-icon">🏦</div>
-                    <div class="pm-label">Debit Card</div>
-                    <div class="pm-desc">Visa / Mastercard</div>
-                  </div>
-                </label>
-                <label class="pm-option" data-method="credit">
-                  <input type="radio" name="payMethod" value="credit" onchange="onPayMethodChange(this)">
-                  <div class="pm-card">
-                    <div class="pm-icon">💳</div>
-                    <div class="pm-label">Credit Card</div>
-                    <div class="pm-desc">Visa / Mastercard / Amex</div>
-                  </div>
-                </label>
-                <label class="pm-option" data-method="gcash">
-                  <input type="radio" name="payMethod" value="gcash" onchange="onPayMethodChange(this)">
-                  <div class="pm-card">
-                    <div class="pm-icon">📱</div>
-                    <div class="pm-label">GCash</div>
-                    <div class="pm-desc">Mobile e-wallet</div>
-                  </div>
-                </label>
-                <label class="pm-option" data-method="paymaya">
-                  <input type="radio" name="payMethod" value="paymaya" onchange="onPayMethodChange(this)">
-                  <div class="pm-card">
-                    <div class="pm-icon">🟢</div>
-                    <div class="pm-label">Maya</div>
-                    <div class="pm-desc">PayMaya / Maya</div>
-                  </div>
-                </label>
-                <label class="pm-option" data-method="cash">
-                  <input type="radio" name="payMethod" value="cash" onchange="onPayMethodChange(this)">
-                  <div class="pm-card">
-                    <div class="pm-icon">💵</div>
-                    <div class="pm-label">Cash</div>
-                    <div class="pm-desc">Pay on arrival</div>
-                  </div>
-                </label>
-              </div>
-
+            <div class="payment-section payment-section--details">
               <!-- Card Details (Debit / Credit) -->
               <div class="card-details" id="cardDetails">
                 <div class="card-preview" id="cardPreview">
@@ -444,6 +439,6 @@
     <div class="toast-msg"   id="toastMsg"></div>
   </div>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

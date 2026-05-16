@@ -544,6 +544,32 @@ section { padding:104px 56px; }
   font-size:.7rem; letter-spacing:1px; opacity:.5;
 }
 
+/* Inline payment picker (below accommodation) */
+.payment-picker-wrap {
+  grid-column:span 2;
+  padding:20px;
+  border:2px solid rgba(0,119,182,.15);
+  border-radius:16px;
+  background:linear-gradient(135deg, rgba(2,62,138,.05) 0%, rgba(0,119,182,.08) 100%);
+}
+.payment-picker-label {
+  font-size:.66rem;
+  letter-spacing:2px;
+  text-transform:uppercase;
+  opacity:.55;
+  font-weight:600;
+  display:block;
+  margin-bottom:6px;
+}
+.payment-picker-hint {
+  font-size:.78rem;
+  opacity:.55;
+  margin-bottom:14px;
+}
+.payment-section--details {
+  margin-top:20px;
+}
+
 /* ── Payment Method Selector ── */
 .payment-methods {
   display:grid;
@@ -557,13 +583,15 @@ section { padding:104px 56px; }
   cursor:none;
   display:block;
   min-width:0;
+  position:relative;
 }
 .pm-option input[type="radio"] {
   position:absolute;
+  inset:0;
+  margin:0;
   opacity:0;
-  width:1px;
-  height:1px;
-  pointer-events:none;
+  cursor:pointer;
+  z-index:2;
 }
 
 .pm-card {
@@ -931,6 +959,7 @@ footer {
   .spots-grid { grid-template-columns:1fr; }
   .book-form  { grid-template-columns:1fr; }
   .form-group.full { grid-column:span 1; }
+  .payment-picker-wrap { grid-column:span 1; }
   .booking-row { grid-template-columns:65px 1fr; }
   .booking-dates, .booking-status { display:none; }
   .photo-grid { grid-template-columns:1fr 1fr; }
