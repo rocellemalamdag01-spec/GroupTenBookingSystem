@@ -1,74 +1,133 @@
-/* ═══════════════════════════════════════════════════════════════
+/*
    CEBUPARADISE — app.js
    Modules: DB · Auth · Cursor · Particles · Spots · Modal ·
-            Bookings · Admin · Helpers · Boot
-   ═══════════════════════════════════════════════════════════════ */
+            Bookings · Payment · Admin · Helpers · Boot */
 
 'use strict';
 
-/* ══════════════════════════════════════════════
-   DATABASE MODULE
-   All data persisted in localStorage / sessionStorage.
-   In a production app, replace these methods with
-   real API calls to a backend database (e.g. Firebase,
-   Supabase, or your own REST server).
-   ══════════════════════════════════════════════ */
+/*  DATABASE + API MODULE */
+const API_URL = 'api.php';
+const API_TIMEOUT_MS = 8000;
+
+async function api(action, payload = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+
+  let res;
+  try {
+    res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, ...payload }),
+      signal: controller.signal
+    });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new Error('Request timed out. Please try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+
+  let json = null;
+  let rawText = '';
+  try { json = await res.json(); } catch { /* ignore */ }
+  if (!json) {
+    try { rawText = await res.text(); } catch { /* ignore */ }
+  }
+
+  if (!res.ok) {
+    throw new Error(json?.error || rawText || `API request failed (${res.status}).`);
+  }
+  if (!json?.ok) {
+    throw new Error(json?.error || rawText || 'API error.');
+  }
+  return json.data;
+}
+
 const DB = {
-
-  /* ── USERS ── */
-  getUsers() {
-    try { return JSON.parse(localStorage.getItem('cp_users') || '[]'); }
-    catch { return []; }
-  },
-  saveUsers(users) {
-    localStorage.setItem('cp_users', JSON.stringify(users));
-  },
-  findUser(email) {
-    return this.getUsers().find(u => u.email.toLowerCase() === email.toLowerCase());
-  },
-  addUser(user) {
-    const users = this.getUsers();
-    users.push(user);
-    this.saveUsers(users);
-  },
-
-  /* ── SESSION ── */
-  getSession()   { try { return JSON.parse(sessionStorage.getItem('cp_session') || 'null'); } catch { return null; } },
-  setSession(u)  { sessionStorage.setItem('cp_session', JSON.stringify(u)); },
+  /*  SESSION (client-only)  */
+  getSession() { try { return JSON.parse(sessionStorage.getItem('cp_session') || 'null'); } catch { return null; } },
+  setSession(u) { sessionStorage.setItem('cp_session', JSON.stringify(u)); },
   clearSession() { sessionStorage.removeItem('cp_session'); },
 
-  /* ── BOOKINGS (per-user key) ── */
-  getBookings(userId) {
-    try { return JSON.parse(localStorage.getItem('cp_bk_' + userId) || '[]'); }
-    catch { return []; }
+  /* AUTH  */
+  async login(email, password) {
+    return api('auth_login', { email, password });
   },
-  saveBookings(userId, bks) {
-    localStorage.setItem('cp_bk_' + userId, JSON.stringify(bks));
+  async register(name, email, password) {
+    return api('auth_register', { name, email, password });
   },
-  countBookings(userId) {
-    return this.getBookings(userId).length;
+
+  /* ADMIN */
+  async getUsersList() {
+    return api('users_list', {});
+  },
+
+  /*  BOOKINGS */
+  async getBookings(userId) {
+    return api('bookings_list', { userId });
+  },
+  async createBooking(userId, booking) {
+    return api('bookings_create', { userId, booking });
+  },
+  async cancelBooking(userId, bookingId) {
+    return api('bookings_cancel', { userId, bookingId });
   }
 };
 
-/* ── Seed default admin account on first load ── */
-(function seedAdmin() {
-  if (DB.getUsers().length === 0) {
-    DB.addUser({
-      id:     'admin_001',
-      name:   'Admin',
-      email:  'admin@cebuparadise.com',
-      password: 'admin123',   /* NOTE: hash passwords in production */
-      role:   'admin',
-      joined: new Date().toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' })
-    });
+/*  One-time migration: localStorage -> DB */
+async function migrateLocalStorageToDbIfNeeded() {
+  try {
+    if (sessionStorage.getItem('cp_migrated') === '1') return;
+  } catch { /* ignore */ }
+
+  let localUsers = [];
+  try {
+    localUsers = JSON.parse(localStorage.getItem('cp_users') || '[]');
+    if (!Array.isArray(localUsers)) localUsers = [];
+  } catch { localUsers = []; }
+
+  const bookingsByUserId = {};
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || !key.startsWith('cp_bk_')) continue;
+      const userId = key.slice('cp_bk_'.length);
+      try {
+        const bks = JSON.parse(localStorage.getItem(key) || '[]');
+        bookingsByUserId[userId] = Array.isArray(bks) ? bks : [];
+      } catch {
+        bookingsByUserId[userId] = [];
+      }
+    }
+  } catch { /* ignore */ }
+
+  const hasAny =
+    (localUsers && localUsers.length > 0) || Object.keys(bookingsByUserId).length > 0;
+  if (!hasAny) return;
+
+  try {
+    await api('migrate_localstorage', { users: localUsers, bookingsByUserId });
+
+    try { localStorage.removeItem('cp_users'); } catch { /* ignore */ }
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('cp_bk_')) localStorage.removeItem(key);
+      }
+    } catch { /* ignore */ }
+
+    try { sessionStorage.setItem('cp_migrated', '1'); } catch { /* ignore */ }
+    showToast('✅ Data Migrated', 'Old saved data was moved to the database.', '#2d6a4f');
+  } catch (e) {
+    // Don't block the app if migration fails.
+    console.warn('Migration failed:', e);
   }
-})();
+}
 
-
-/* ══════════════════════════════════════════════
-   TOURIST SPOTS DATA
-   Images: Wikimedia Commons (CC-BY-SA / Public Domain)
-   ══════════════════════════════════════════════ */
+/* TOURIST SPOTS DATA */
 const SPOTS = [
   {
     id: 1, name: "Oslob Whale Shark Watching",
@@ -272,18 +331,15 @@ const SPOTS = [
 ];
 
 
-/* ══════════════════════════════════════════════
-   APP STATE
-   ══════════════════════════════════════════════ */
+/* APP STATE */
+
 let currentUser  = null;
 let currentSpot  = null;
 let activeFilter = 'all';
 let isGuest      = false;
+let currentBookings = [];
 
-
-/* ══════════════════════════════════════════════
-   CURSOR
-   ══════════════════════════════════════════════ */
+/* CURSOR */
 const $cursor    = document.getElementById('cursor');
 const $cursorDot = document.getElementById('cursorDot');
 
@@ -298,14 +354,10 @@ document.addEventListener('mousemove', e => {
 document.addEventListener('mousedown', () => $cursor.style.transform = 'translate(-50%,-50%) scale(.65)');
 document.addEventListener('mouseup',   () => $cursor.style.transform = 'translate(-50%,-50%) scale(1)');
 document.addEventListener('mouseover', e => {
-  const over = !!e.target.closest('button, a, .spot-card, .accomm-card, .photo-item, .booking-row, .auth-input');
+  const over = !!e.target.closest('button, a, .spot-card, .accomm-card, .photo-item, .booking-row, .auth-input, .pm-option, label');
   $cursor.classList.toggle('hov', over);
 });
-
-
-/* ══════════════════════════════════════════════
-   PARTICLES
-   ══════════════════════════════════════════════ */
+/* PARTICLES */
 function spawnParticles(containerId, count) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -324,10 +376,8 @@ function spawnParticles(containerId, count) {
     container.appendChild(p);
   }
 }
-
-
 /* ══════════════════════════════════════════════
-   AUTH — Sign In / Register / Guest
+   AUTH
    ══════════════════════════════════════════════ */
 function showAuthTab(tab) {
   document.getElementById('loginForm').style.display    = tab === 'login'    ? 'block' : 'none';
@@ -343,17 +393,20 @@ function authError(id, msg) {
   setTimeout(() => el.classList.remove('show'), 4000);
 }
 
-function doLogin() {
+async function doLogin() {
   const email    = document.getElementById('loginEmail').value.trim();
   const password = document.getElementById('loginPassword').value;
   if (!email || !password) { authError('loginError', 'Please enter your email and password.'); return; }
-  const user = DB.findUser(email);
-  if (!user)                    { authError('loginError', 'No account found with that email.'); return; }
-  if (user.password !== password) { authError('loginError', 'Incorrect password. Please try again.'); return; }
-  startSession(user, false);
+
+  try {
+    const user = await DB.login(email, password);
+    await startSession(user, false);
+  } catch (e) {
+    authError('loginError', e?.message || 'Login failed. Please try again.');
+  }
 }
 
-function doRegister() {
+async function doRegister() {
   const name     = document.getElementById('regName').value.trim();
   const email    = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
@@ -362,52 +415,45 @@ function doRegister() {
   if (!email || !email.includes('@'))  { authError('registerError', 'Please enter a valid email address.'); return; }
   if (password.length < 6)             { authError('registerError', 'Password must be at least 6 characters.'); return; }
   if (password !== confirm)            { authError('registerError', 'Passwords do not match.'); return; }
-  if (DB.findUser(email))              { authError('registerError', 'An account with that email already exists.'); return; }
-  const newUser = {
-    id:       'usr_' + Date.now(),
-    name, email, password,
-    role:     'user',
-    joined:   new Date().toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' })
-  };
-  DB.addUser(newUser);
-  startSession(newUser, false);
+
+  try {
+    const user = await DB.register(name, email, password);
+    await startSession(user, false);
+  } catch (e) {
+    authError('registerError', e?.message || 'Registration failed. Please try again.');
+  }
 }
 
-function doGuest() {
+async function doGuest() {
   const guestUser = {
     id: 'guest_' + Date.now(), name: 'Guest Explorer',
     email: '', role: 'guest', joined: 'Today'
   };
-  startSession(guestUser, true);
+  await startSession(guestUser, true);
 }
 
-function startSession(user, guest) {
+async function startSession(user, guest) {
   currentUser = user;
   isGuest     = guest;
   if (!guest) DB.setSession(user);
 
-  /* Hide auth overlay → show app */
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('app').classList.add('visible');
 
-  /* Navbar */
   const initials = user.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
   document.getElementById('navAvatar').textContent   = initials;
   document.getElementById('navUsername').textContent = user.name.split(' ')[0];
 
-  /* Admin panel */
   if (user.role === 'admin') {
     document.getElementById('navAdminLink').style.display = 'block';
     document.getElementById('admin').style.display        = 'block';
-    renderUsersTable();
+    await renderUsersTable();
   }
 
-  /* Hero welcome */
   document.getElementById('heroWelcome').textContent = guest
     ? '🌊 Browsing as Guest — Sign up to save bookings!'
     : `Welcome back, ${user.name.split(' ')[0]}! 🌺`;
 
-  /* Prefill booking form */
   if (!guest) {
     document.getElementById('bkName').value  = user.name;
     document.getElementById('bkEmail').value = user.email;
@@ -415,6 +461,13 @@ function startSession(user, guest) {
 
   spawnParticles('heroParticles', 20);
   renderSpots();
+
+  if (!guest) {
+    currentBookings = await DB.getBookings(currentUser.id);
+  } else {
+    currentBookings = [];
+  }
+
   renderBookings();
   updateStats();
   setMinDates();
@@ -422,27 +475,40 @@ function startSession(user, guest) {
     guest ? 'Browsing as Guest.' : `Signed in as ${user.name}.`, '#2d6a4f');
 }
 
+async function refreshBookings() {
+  if (!currentUser || isGuest) {
+    currentBookings = [];
+    return;
+  }
+  try {
+    currentBookings = await DB.getBookings(currentUser.id);
+  } catch (e) {
+    currentBookings = [];
+    showToast('⚠️ Load Failed', e?.message || 'Could not load bookings.', '#e94f37');
+  }
+}
+
 function doLogout() {
   DB.clearSession();
   currentUser = null;
   isGuest     = false;
+  currentBookings = [];
   document.getElementById('app').classList.remove('visible');
   document.getElementById('authOverlay').style.display = 'flex';
   document.getElementById('navAdminLink').style.display = 'none';
   document.getElementById('admin').style.display        = 'none';
-  /* Clear login inputs */
   document.getElementById('loginEmail').value    = '';
   document.getElementById('loginPassword').value = '';
+  renderBookings();
+  updateStats();
   showToast('👋 Logged Out', 'Come back soon!', '#0077b6');
 }
-
 
 /* ══════════════════════════════════════════════
    NAVBAR SCROLL EFFECT
    ══════════════════════════════════════════════ */
 window.addEventListener('scroll', () =>
   document.getElementById('navbar').classList.toggle('scrolled', window.scrollY > 70));
-
 
 /* ══════════════════════════════════════════════
    SPOT CARDS
@@ -475,8 +541,6 @@ function initReveal() {
   );
   document.querySelectorAll('.reveal').forEach(el => obs.observe(el));
 }
-
-
 /* ══════════════════════════════════════════════
    MODAL — View Spot Details
    ══════════════════════════════════════════════ */
@@ -485,18 +549,15 @@ function openView(id) {
   if (!s) return;
   currentSpot = s;
 
-  /* Hero image */
   const hi = document.getElementById('modalHeroImg');
   hi.src = s.cardImg; hi.alt = s.name;
   hi.onerror = () => { hi.style.background = 'linear-gradient(135deg,#0077b6,#00b4d8)'; hi.src = ''; };
 
-  /* Text */
   document.getElementById('modalTitle').textContent = s.name;
   document.getElementById('modalLoc').textContent   = '📍 ' + s.location + '  ·  ⭐ ' + s.rating;
   document.getElementById('modalTags').innerHTML    = s.tags.map(t => `<span class="tag">${t}</span>`).join('');
   document.getElementById('modalDesc').textContent  = s.desc;
 
-  /* Gallery */
   document.getElementById('photoGrid').innerHTML = s.galleryImgs.map((img, i) => `
     <div class="photo-item${i === 0 ? ' featured' : ''}">
       <img src="${img.url}" alt="${img.label}" loading="lazy"
@@ -504,7 +565,6 @@ function openView(id) {
       <div class="photo-label">${img.label}</div>
     </div>`).join('');
 
-  /* Accommodations */
   document.getElementById('accommGrid').innerHTML = s.accommodations.map(a => `
     <div class="accomm-card">
       <img class="accomm-img" src="${a.img}" alt="${a.name}" loading="lazy"
@@ -517,10 +577,12 @@ function openView(id) {
         <div class="accomm-amen">${a.amenities.map(am => `<span class="tag">${am}</span>`).join('')}</div>
       </div>
     </div>`).join('');
-
-  /* Booking dropdown */
+    
   document.getElementById('bkAccomm').innerHTML = s.accommodations
     .map(a => `<option>${a.name} — ${a.price}</option>`).join('');
+
+  /* Reset payment section */
+  resetPaymentSection();
 
   switchTab('gallery');
   document.getElementById('viewModal').classList.add('active');
@@ -546,17 +608,183 @@ function switchTab(tab) {
   document.querySelectorAll('.tab-btn')[idx].classList.add('active');
 }
 
-/* Close modal on backdrop click or Escape */
 document.getElementById('viewModal').addEventListener('click', function(e) {
   if (e.target === this) closeModal('viewModal');
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal('viewModal'); });
 
+/* ══════════════════════════════════════════════
+   PAYMENT / TRANSACTION MODULE
+   ══════════════════════════════════════════════ */
+/* Payment method labels for display */
+const PAY_LABELS = {
+  debit:   '🏦 Debit Card',
+  credit:  '💳 Credit Card',
+  gcash:   '📱 GCash',
+  paymaya: '🟢 Maya',
+  cash:    '💵 Cash'
+};
 
+/* Reset the payment section to its default state */
+function resetPaymentSection() {
+  /* Uncheck all radios */
+  document.querySelectorAll('input[name="payMethod"]').forEach(r => r.checked = false);
+  /* Deselect all PM cards */
+  document.querySelectorAll('.pm-option').forEach(o => o.querySelector('.pm-card').style.background = '');
+  /* Hide all sub-panels */
+  document.getElementById('cardDetails').classList.remove('active');
+  document.getElementById('ewalletDetails').classList.remove('active');
+  document.getElementById('cashDetails').classList.remove('active');
+  /* Clear card fields */
+  ['cardNumber','cardName','cardExpiry','cardCvv','ewalletNumber'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  /* Reset card preview */
+  document.getElementById('previewCardNum').textContent  = '•••• •••• •••• ••••';
+  document.getElementById('previewCardName').textContent = 'FULL NAME';
+  document.getElementById('previewCardExp').textContent  = 'MM / YY';
+  document.getElementById('cardBrandLogo').textContent   = 'VISA';
+}
+
+/* Called when user selects a payment method radio */
+function onPayMethodChange(radio) {
+  const method = radio.value;
+
+  /* Hide all sub-panels */
+  document.getElementById('cardDetails').classList.remove('active');
+  document.getElementById('ewalletDetails').classList.remove('active');
+  document.getElementById('cashDetails').classList.remove('active');
+
+  if (method === 'debit' || method === 'credit') {
+    document.getElementById('cardDetails').classList.add('active');
+    /* Update card type label on preview */
+    const logo = document.getElementById('cardBrandLogo');
+    logo.textContent = method === 'credit' ? 'VISA' : 'DEBIT';
+  } else if (method === 'gcash' || method === 'paymaya') {
+    const panel = document.getElementById('ewalletDetails');
+    panel.classList.add('active');
+    /* Customise labels per wallet */
+    const isGcash = method === 'gcash';
+    document.getElementById('ewalletIcon').textContent  = isGcash ? '📱' : '🟢';
+    document.getElementById('ewalletTitle').textContent = isGcash ? 'GCash Mobile Number' : 'Maya Mobile Number';
+    document.getElementById('ewalletHint').textContent  = isGcash
+      ? 'Enter your registered GCash number'
+      : 'Enter your registered Maya number';
+    document.getElementById('ewalletLabel').textContent = isGcash ? 'GCash Number *' : 'Maya Number *';
+    document.getElementById('ewalletApp').textContent   = isGcash ? 'GCash' : 'Maya';
+    document.getElementById('ewalletNumber').placeholder = '+63 917 123 4567';
+  } else if (method === 'cash') {
+    document.getElementById('cashDetails').classList.add('active');
+  }
+}
+/* Live card number formatting (groups of 4) */
+function formatCardNumber(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 16);
+  v = v.replace(/(.{4})/g, '$1 ').trim();
+  input.value = v;
+  updateCardPreview();
+  /* Detect card brand */
+  const raw = v.replace(/\s/g, '');
+  const logo = document.getElementById('cardBrandLogo');
+  if (/^4/.test(raw))        logo.textContent = 'VISA';
+  else if (/^5[1-5]/.test(raw)) logo.textContent = 'MC';
+  else if (/^3[47]/.test(raw))  logo.textContent = 'AMEX';
+  else                           logo.textContent = 'CARD';
+}
+/* Live expiry formatting (MM / YY) */
+function formatExpiry(input) {
+  let v = input.value.replace(/\D/g, '').slice(0, 4);
+  if (v.length >= 3) v = v.slice(0, 2) + ' / ' + v.slice(2);
+  input.value = v;
+  updateCardPreview();
+}
+/* Sync card preview display */
+function updateCardPreview() {
+  const num  = document.getElementById('cardNumber')?.value || '';
+  const name = document.getElementById('cardName')?.value  || '';
+  const exp  = document.getElementById('cardExpiry')?.value || '';
+
+  const numEl  = document.getElementById('previewCardNum');
+  const nameEl = document.getElementById('previewCardName');
+  const expEl  = document.getElementById('previewCardExp');
+
+  /* Fill remaining digits with dots */
+  const rawNum = num.replace(/\s/g, '');
+  let display = '';
+  for (let i = 0; i < 16; i++) {
+    if (i > 0 && i % 4 === 0) display += ' ';
+    display += rawNum[i] ? rawNum[i] : '•';
+  }
+  numEl.textContent  = display;
+  nameEl.textContent = name.toUpperCase() || 'FULL NAME';
+  expEl.textContent  = exp || 'MM / YY';
+}
+
+/* Validate payment fields before booking submission */
+function validatePayment() {
+  const method = document.querySelector('input[name="payMethod"]:checked')?.value;
+
+  if (!method) {
+    showToast('💳 Payment Required', 'Please select a payment method.', '#f77f00');
+    return false;
+  }
+
+  if (method === 'debit' || method === 'credit') {
+    const num  = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const name = document.getElementById('cardName').value.trim();
+    const exp  = document.getElementById('cardExpiry').value.trim();
+    const cvv  = document.getElementById('cardCvv').value.trim();
+
+    if (num.length < 16)  { showToast('⚠️ Invalid Card', 'Enter a valid 16-digit card number.', '#f77f00'); return false; }
+    if (!name)             { showToast('⚠️ Card Name',   'Enter the cardholder name.',           '#f77f00'); return false; }
+    if (exp.length < 7)    { showToast('⚠️ Expiry',      'Enter a valid expiry date (MM / YY).', '#f77f00'); return false; }
+    if (cvv.length < 3)    { showToast('⚠️ CVV',         'Enter a valid CVV (3–4 digits).',      '#f77f00'); return false; }
+
+    /* Basic expiry check */
+    const [mm, yy] = exp.split('/').map(s => parseInt(s.trim(), 10));
+    const now = new Date();
+    const expDate = new Date(2000 + yy, mm - 1);
+    if (isNaN(mm) || isNaN(yy) || expDate < now) {
+      showToast('⚠️ Expired Card', 'Your card has expired. Use a valid card.', '#e94f37');
+      return false;
+    }
+
+    return method;
+  }
+
+  if (method === 'gcash' || method === 'paymaya') {
+    const num = document.getElementById('ewalletNumber').value.trim();
+    if (num.replace(/\D/g, '').length < 10) {
+      showToast('⚠️ Invalid Number', 'Enter a valid mobile number.', '#f77f00');
+      return false;
+    }
+    return method;
+  }
+
+  // Cash has no additional fields.
+  return method;
+}
+
+/* Get a masked payment summary for the booking record */
+function getPaymentSummary(method) {
+  if (method === 'debit' || method === 'credit') {
+    const num = document.getElementById('cardNumber').value.replace(/\s/g, '');
+    const last4 = num.slice(-4);
+    const type  = method === 'credit' ? 'Credit' : 'Debit';
+    return `${type} Card ••••${last4}`;
+  }
+  if (method === 'gcash' || method === 'paymaya') {
+    const num = document.getElementById('ewalletNumber').value.trim();
+    const label = method === 'gcash' ? 'GCash' : 'Maya';
+    return `${label} ${num.slice(-4).padStart(num.length, '•')}`;
+  }
+  return 'Cash on Arrival';
+}
 /* ══════════════════════════════════════════════
    BOOKING SUBMISSION
    ══════════════════════════════════════════════ */
-function submitBooking() {
+async function submitBooking() {
   if (isGuest) { showToast('🔑 Login Required', 'Please create an account to book.', '#f77f00'); return; }
 
   const name     = document.getElementById('bkName').value.trim();
@@ -567,37 +795,57 @@ function submitBooking() {
   const accomm   = document.getElementById('bkAccomm').value;
   const notes    = document.getElementById('bkNotes').value.trim();
 
-  if (!name)                           { showToast('⚠️ Required',     'Enter your full name.',                        '#f77f00'); return; }
-  if (!email || !email.includes('@'))  { showToast('⚠️ Invalid Email','Enter a valid email.',                         '#f77f00'); return; }
-  if (!checkin || !checkout)           { showToast('⚠️ Missing Dates','Select check-in and check-out dates.',         '#f77f00'); return; }
-  if (new Date(checkout) <= new Date(checkin)) { showToast('⚠️ Invalid Dates','Check-out must be after check-in.',   '#f77f00'); return; }
+  if (!name)                           { showToast('⚠️ Required',      'Enter your full name.',                       '#f77f00'); return; }
+  if (!email || !email.includes('@'))  { showToast('⚠️ Invalid Email', 'Enter a valid email.',                        '#f77f00'); return; }
+  if (!checkin || !checkout)           { showToast('⚠️ Missing Dates', 'Select check-in and check-out dates.',        '#f77f00'); return; }
+  if (new Date(checkout) <= new Date(checkin)) { showToast('⚠️ Invalid Dates', 'Check-out must be after check-in.', '#f77f00'); return; }
 
-  const nights = Math.ceil((new Date(checkout) - new Date(checkin)) / 86400000);
-  const ref    = 'CP' + Date.now().toString(36).toUpperCase().slice(-6);
-  const bks    = DB.getBookings(currentUser.id);
+  /* Validate payment */
+  const method = validatePayment();
+  if (!method) return;
 
-  bks.unshift({
-    id: Date.now(), ref,
+  const nights     = Math.ceil((new Date(checkout) - new Date(checkin)) / 86400000);
+  const ref        = 'CP' + Date.now().toString(36).toUpperCase().slice(-6);
+  const paySummary = getPaymentSummary(method);
+  const booking = {
+    id: Date.now(),
+    ref,
     spotId:   currentSpot.id,
     spotName: currentSpot.name,
     spotImg:  currentSpot.cardImg,
     name, email, checkin, checkout, guests, accomm, notes, nights,
-    status:  'confirmed',
+    payMethod: method,
+    paySummary,
+    status: 'confirmed',
     created: new Date().toLocaleDateString('en-PH', { month:'short', day:'numeric', year:'numeric' })
-  });
+  };
 
-  DB.saveBookings(currentUser.id, bks);
-  renderBookings(); updateStats();
-  closeModal('viewModal');
-  showToast('🌴 Booking Confirmed!', `${currentSpot.name} — Ref: ${ref}`, '#2d6a4f');
+  try {
+    await DB.createBooking(currentUser.id, booking);
+    await refreshBookings();
+    renderBookings();
+    updateStats();
+    closeModal('viewModal');
+  } catch (e) {
+    showToast('Booking Failed', e?.message || 'Could not save booking.', '#e94f37');
+    return;
+  }
 
-  /* Reset date & notes fields (keep name/email pre-filled) */
+
+  const payIcon = PAY_LABELS[method].split(' ')[0];
+  showToast(
+    '🌴 Booking Confirmed!',
+    `${currentSpot.name} — Ref: ${ref} · ${payIcon} ${paySummary}`,
+    '#2d6a4f'
+  );
+
+  /* Reset date, notes, payment fields (keep name/email pre-filled) */
   ['bkCheckin', 'bkCheckout', 'bkNotes'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  resetPaymentSection();
 }
-
 
 /* ══════════════════════════════════════════════
    BOOKINGS DASHBOARD
@@ -606,17 +854,13 @@ function renderBookings(filter, status) {
   filter = filter !== undefined ? filter : (document.getElementById('searchInput')?.value || '');
   status = status !== undefined ? status : activeFilter;
   const list = document.getElementById('bookingsList');
+  if (!list) return;
 
-  if (!currentUser || isGuest) {
-    list.innerHTML = `<div class="empty-state"><span class="empty-icon">🔑</span><p>Sign in to view and manage your bookings.</p></div>`;
-    return;
-  }
-
-  const bks      = DB.getBookings(currentUser.id);
+  const bks = Array.isArray(currentBookings) ? currentBookings : [];
+  const q = (filter || '').toLowerCase().trim();
   const filtered = bks.filter(b => {
-    const q         = filter.toLowerCase();
-    const matchText = !q || b.spotName.toLowerCase().includes(q)
-      || b.name.toLowerCase().includes(q) || b.ref.toLowerCase().includes(q);
+    const matchText = !q || (b.spotName || '').toLowerCase().includes(q)
+      || (b.name || '').toLowerCase().includes(q) || (b.ref || '').toLowerCase().includes(q);
     return matchText && (status === 'all' || b.status === status);
   });
 
@@ -636,9 +880,12 @@ function renderBookings(filter, status) {
         <div class="booking-spot">${b.spotName}</div>
         <div class="booking-meta">${b.name} · ${b.guests}</div>
         <div class="booking-ref">Ref: ${b.ref}</div>
+        ${b.paySummary ? `<div class="booking-pay-badge">💳 ${b.paySummary}</div>` : ''}
         <div class="mini-btns">
           <button class="mini-btn vm"  onclick="openView(${b.spotId})">View Spot</button>
-          <button class="mini-btn"     onclick="cancelBooking(${b.id})">Cancel</button>
+          <button class="mini-btn"     onclick="cancelBooking(${b.id})" ${b.status !== 'confirmed' ? 'disabled' : ''}>
+            ${b.status !== 'confirmed' ? 'Cancelled' : 'Cancel'}
+          </button>
         </div>
       </div>
       <div class="booking-dates">
@@ -649,30 +896,27 @@ function renderBookings(filter, status) {
     </div>`).join('');
 }
 
-function cancelBooking(id) {
-  const bks = DB.getBookings(currentUser.id);
-  const idx = bks.findIndex(b => b.id === id);
-  if (idx === -1) return;
-  bks[idx].status = 'cancelled';
-  DB.saveBookings(currentUser.id, bks);
-  renderBookings(); updateStats();
-  showToast('🗑️ Cancelled', 'Booking has been cancelled.', '#d62828');
-}
-
 function filterBookings() {
   renderBookings(document.getElementById('searchInput')?.value || '', activeFilter);
+  updateStats();
 }
-
 function setFilter(status, btn) {
   activeFilter = status;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('act'));
   if (btn) btn.classList.add('act');
-  filterBookings();
+  renderBookings(document.getElementById('searchInput')?.value || '', activeFilter);
+  updateStats();
 }
 
 function updateStats() {
-  if (!currentUser || isGuest) return;
-  const bks       = DB.getBookings(currentUser.id);
+  if (!currentUser || isGuest) {
+    document.getElementById('stTotal').textContent     = '0';
+    document.getElementById('stConfirmed').textContent = '0';
+    document.getElementById('stUpcoming').textContent  = '0';
+    document.getElementById('stSpots').textContent     = '0';
+    return;
+  }
+  const bks       = currentBookings;
   const confirmed = bks.filter(b => b.status === 'confirmed').length;
   const upcoming  = bks.filter(b => b.status === 'confirmed' && new Date(b.checkin) >= new Date()).length;
   const spots     = new Set(bks.map(b => b.spotId)).size;
@@ -682,31 +926,49 @@ function updateStats() {
   document.getElementById('stSpots').textContent     = spots;
 }
 
+async function cancelBooking(bookingId) {
+  if (!currentUser || isGuest) return;
+  const b = (currentBookings || []).find(x => x.id === bookingId);
+  if (!b || b.status !== 'confirmed') return;
 
+  try {
+    await DB.cancelBooking(currentUser.id, bookingId);
+    await refreshBookings();
+    renderBookings();
+    updateStats();
+    showToast('✅ Cancelled', `Booking ${b.ref} was cancelled.`, '#0077b6');
+  } catch (e) {
+    showToast('Cancel Failed', e?.message || 'Could not cancel booking.', '#e94f37');
+  }
+}
 /* ══════════════════════════════════════════════
    ADMIN — Users Table
    ══════════════════════════════════════════════ */
-function renderUsersTable() {
-  const users = DB.getUsers();
-  document.getElementById('usersTableBody').innerHTML = users.map(u => `
-    <tr>
-      <td>
-        <span class="user-avatar-sm">
-          ${u.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
-        </span>
-        ${u.name}
-      </td>
-      <td>${u.email}</td>
-      <td><span class="role-badge role-${u.role}">${u.role}</span></td>
-      <td>${u.joined}</td>
-      <td>${DB.countBookings(u.id)}</td>
-    </tr>`).join('');
+async function renderUsersTable() {
+  const body = document.getElementById('usersTableBody');
+  if (!body) return;
+
+  try {
+    const users = await DB.getUsersList();
+    body.innerHTML = users.map(u => `
+      <tr>
+        <td>
+          <span class="user-avatar-sm">
+            ${(u.name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)}
+          </span>
+          ${u.name}
+        </td>
+        <td>${u.email}</td>
+        <td>${u.role}</td>
+        <td>${u.joined}</td>
+        <td>${u.bookingCount}</td>
+      </tr>`).join('');
+  } catch (e) {
+    body.innerHTML = '';
+    showToast('⚠️ Admin Load Failed', e?.message || 'Could not load users.', '#e94f37');
+  }
 }
-
-
-/* ══════════════════════════════════════════════
-   HELPERS
-   ══════════════════════════════════════════════ */
+/* HELPERS*/
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d + 'T00:00:00').toLocaleDateString('en-PH', { month:'short', day:'numeric' });
@@ -723,11 +985,7 @@ function setMinDates() {
   if (ci) { ci.min = today; ci.addEventListener('change', () => { if (co) co.min = ci.value; }); }
   if (co)   co.min = today;
 }
-
-
-/* ══════════════════════════════════════════════
-   TOAST NOTIFICATION
-   ══════════════════════════════════════════════ */
+/* TOAST NOTIFICATION */
 function showToast(title, msg, color) {
   const t = document.getElementById('toast');
   t.style.borderLeftColor = color || '#2d6a4f';
@@ -737,28 +995,21 @@ function showToast(title, msg, color) {
   clearTimeout(t._timer);
   t._timer = setTimeout(() => t.classList.remove('show'), 4500);
 }
-
-
-/* ══════════════════════════════════════════════
-   KEYBOARD SHORTCUTS
-   ══════════════════════════════════════════════ */
+/*KEYBOARD SHORTCUTS*/
 document.getElementById('loginPassword').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
 document.getElementById('regConfirm').addEventListener('keydown',   e => { if (e.key === 'Enter') doRegister(); });
 
-
-/* ══════════════════════════════════════════════
-   BOOT — runs immediately on page load
-   ══════════════════════════════════════════════ */
-(function boot() {
+/*  BOOT */
+(async function boot() {
   spawnParticles('authParticles', 18);
 
-  /* Try to resume an existing session */
   const saved = DB.getSession();
   if (saved) {
-    const freshUser = DB.findUser(saved.email);
-    if (freshUser) { startSession(freshUser, false); return; }
+    await startSession(saved, false);
+  } else {
+    document.getElementById('authOverlay').style.display = 'flex';
   }
 
-  /* Otherwise show the auth overlay */
-  document.getElementById('authOverlay').style.display = 'flex';
+  // Run migration after initial UI is ready so first paint isn't blocked.
+  setTimeout(() => { migrateLocalStorageToDbIfNeeded(); }, 0);
 })();

@@ -22,25 +22,21 @@
 
   <!-- ══════════════════════════════════════════════════════════
        AUTH OVERLAY
-       Shown on first visit. Hidden once user logs in.
        ══════════════════════════════════════════════════════════ -->
   <div id="authOverlay">
-    <!-- Background -->
     <div class="auth-bg">
       <img class="auth-bg-img"
-        src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Bantayan-Island-Cebu-Philippines.jpg/1920px-Bantayan-Island-Cebu-Philippines.jpg"
+        src="images/bantayan/Bantayan-Island.webp"
         alt="Bantayan Island, Cebu"
         onerror="this.style.opacity=0">
       <div class="auth-overlay-grad"></div>
     </div>
     <div id="authParticles"></div>
 
-    <!-- Login / Register Card -->
     <div class="auth-box">
       <div class="auth-logo">Cebu<span>Paradise</span></div>
       <div class="auth-tagline">✦ The Pearl of the South ✦</div>
 
-      <!-- Tab Switcher -->
       <div class="auth-tabs">
         <button class="auth-tab-btn active" id="tabLogin"    onclick="showAuthTab('login')">Sign In</button>
         <button class="auth-tab-btn"        id="tabRegister" onclick="showAuthTab('register')">Register</button>
@@ -95,13 +91,12 @@
           <button class="auth-submit" onclick="doRegister()">🌺 &nbsp;Create My Account</button>
         </div>
       </div>
-    </div><!-- /auth-box -->
-  </div><!-- /authOverlay -->
+    </div>
+  </div>
 
 
   <!-- ══════════════════════════════════════════════════════════
        MAIN APP
-       Hidden until user is authenticated.
        ══════════════════════════════════════════════════════════ -->
   <div id="app">
 
@@ -127,7 +122,7 @@
     <!-- ── HERO ── -->
     <section class="hero" id="hero">
       <img class="hero-bg-img"
-        src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Bantayan-Island-Cebu-Philippines.jpg/1920px-Bantayan-Island-Cebu-Philippines.jpg"
+        src="images/bantayan/Bantayan-Island.webp"
         alt="Bantayan Island, Cebu, Philippines"
         onerror="this.style.background='linear-gradient(160deg,#023e8a,#0077b6,#f77f00)';this.src=''">
       <div class="hero-gradient"></div>
@@ -158,7 +153,6 @@
           your perfect Cebu adventure starts here.
         </p>
       </div>
-      <!-- Cards injected by app.js renderSpots() -->
       <div class="spots-grid" id="spotsGrid"></div>
     </section>
 
@@ -178,18 +172,16 @@
           <button class="filter-btn"     onclick="setFilter('cancelled',this)">Cancelled</button>
         </div>
       </div>
-      <!-- Stats bar -->
       <div class="stats-bar">
         <div class="stat-item"><div class="stat-num" id="stTotal">0</div>    <div class="stat-lbl">Total</div></div>
         <div class="stat-item"><div class="stat-num" id="stConfirmed">0</div><div class="stat-lbl">Confirmed</div></div>
         <div class="stat-item"><div class="stat-num" id="stUpcoming">0</div> <div class="stat-lbl">Upcoming</div></div>
         <div class="stat-item"><div class="stat-num" id="stSpots">0</div>    <div class="stat-lbl">Spots</div></div>
       </div>
-      <!-- Booking rows injected by renderBookings() -->
       <div class="bookings-list" id="bookingsList"></div>
     </section>
 
-    <!-- ── ADMIN PANEL (admin role only) ── -->
+    <!-- ── ADMIN PANEL ── -->
     <section class="admin-section" id="admin" style="display:none">
       <div class="section-eyebrow">✦ Admin Console</div>
       <h2 class="section-title">Registered Users</h2>
@@ -207,7 +199,6 @@
               <th>Bookings</th>
             </tr>
           </thead>
-          <!-- Rows injected by renderUsersTable() -->
           <tbody id="usersTableBody"></tbody>
         </table>
       </div>
@@ -232,20 +223,17 @@
       <div class="modal">
         <button class="modal-close" onclick="closeModal('viewModal')" aria-label="Close">✕</button>
 
-        <!-- Hero image -->
         <div class="modal-hero-wrap">
           <img class="modal-hero-img" id="modalHeroImg" src="" alt="">
           <div class="modal-hero-grad"></div>
         </div>
 
         <div class="modal-body">
-          <!-- Header -->
           <h2 class="modal-title"     id="modalTitle"></h2>
           <div class="modal-location" id="modalLoc"></div>
           <div class="modal-tags"     id="modalTags"></div>
           <p  class="modal-desc"      id="modalDesc"></p>
 
-          <!-- Tab navigation -->
           <div class="modal-tabs">
             <button class="tab-btn active" onclick="switchTab('gallery')">📷 Photos</button>
             <button class="tab-btn"        onclick="switchTab('accommodations')">🏨 Stay</button>
@@ -302,6 +290,144 @@
                 <textarea id="bkNotes" placeholder="Dietary needs, accessibility, special occasions…"></textarea>
               </div>
             </div>
+
+            <!-- ══ PAYMENT / TRANSACTION SECTION ══ -->
+            <div class="payment-section">
+              <div class="payment-header">
+                <span class="payment-icon">💳</span>
+                <div>
+                  <div class="payment-title">Payment Method</div>
+                  <div class="payment-sub">Choose how you'd like to pay for your booking</div>
+                </div>
+              </div>
+
+              <!-- Payment Method Selector -->
+              <div class="payment-methods">
+                <label class="pm-option" data-method="debit">
+                  <input type="radio" name="payMethod" value="debit" onchange="onPayMethodChange(this)">
+                  <div class="pm-card">
+                    <div class="pm-icon">🏦</div>
+                    <div class="pm-label">Debit Card</div>
+                    <div class="pm-desc">Visa / Mastercard</div>
+                  </div>
+                </label>
+                <label class="pm-option" data-method="credit">
+                  <input type="radio" name="payMethod" value="credit" onchange="onPayMethodChange(this)">
+                  <div class="pm-card">
+                    <div class="pm-icon">💳</div>
+                    <div class="pm-label">Credit Card</div>
+                    <div class="pm-desc">Visa / Mastercard / Amex</div>
+                  </div>
+                </label>
+                <label class="pm-option" data-method="gcash">
+                  <input type="radio" name="payMethod" value="gcash" onchange="onPayMethodChange(this)">
+                  <div class="pm-card">
+                    <div class="pm-icon">📱</div>
+                    <div class="pm-label">GCash</div>
+                    <div class="pm-desc">Mobile e-wallet</div>
+                  </div>
+                </label>
+                <label class="pm-option" data-method="paymaya">
+                  <input type="radio" name="payMethod" value="paymaya" onchange="onPayMethodChange(this)">
+                  <div class="pm-card">
+                    <div class="pm-icon">🟢</div>
+                    <div class="pm-label">Maya</div>
+                    <div class="pm-desc">PayMaya / Maya</div>
+                  </div>
+                </label>
+                <label class="pm-option" data-method="cash">
+                  <input type="radio" name="payMethod" value="cash" onchange="onPayMethodChange(this)">
+                  <div class="pm-card">
+                    <div class="pm-icon">💵</div>
+                    <div class="pm-label">Cash</div>
+                    <div class="pm-desc">Pay on arrival</div>
+                  </div>
+                </label>
+              </div>
+
+              <!-- Card Details (Debit / Credit) -->
+              <div class="card-details" id="cardDetails">
+                <div class="card-preview" id="cardPreview">
+                  <div class="card-preview-chip">
+                    <div class="chip-lines"></div>
+                  </div>
+                  <div class="card-preview-number" id="previewCardNum">•••• •••• •••• ••••</div>
+                  <div class="card-preview-bottom">
+                    <div>
+                      <div class="card-preview-label">Card Holder</div>
+                      <div class="card-preview-value" id="previewCardName">FULL NAME</div>
+                    </div>
+                    <div>
+                      <div class="card-preview-label">Expires</div>
+                      <div class="card-preview-value" id="previewCardExp">MM / YY</div>
+                    </div>
+                    <div class="card-brand-logo" id="cardBrandLogo">VISA</div>
+                  </div>
+                </div>
+
+                <div class="card-fields">
+                  <div class="form-group full">
+                    <label>Card Number *</label>
+                    <input type="text" id="cardNumber" placeholder="1234 5678 9012 3456"
+                      maxlength="19" oninput="formatCardNumber(this)" autocomplete="cc-number">
+                  </div>
+                  <div class="form-group full">
+                    <label>Cardholder Name *</label>
+                    <input type="text" id="cardName" placeholder="JUAN DELA CRUZ"
+                      oninput="updateCardPreview()" autocomplete="cc-name"
+                      style="text-transform:uppercase">
+                  </div>
+                  <div class="form-group">
+                    <label>Expiry Date *</label>
+                    <input type="text" id="cardExpiry" placeholder="MM / YY"
+                      maxlength="7" oninput="formatExpiry(this)" autocomplete="cc-exp">
+                  </div>
+                  <div class="form-group">
+                    <label>CVV *</label>
+                    <input type="password" id="cardCvv" placeholder="•••"
+                      maxlength="4" autocomplete="cc-csc">
+                  </div>
+                </div>
+              </div>
+
+              <!-- GCash / Maya Details -->
+              <div class="ewallet-details" id="ewalletDetails">
+                <div class="ewallet-info">
+                  <div class="ewallet-icon" id="ewalletIcon">📱</div>
+                  <div>
+                    <div class="ewallet-title" id="ewalletTitle">GCash Mobile Number</div>
+                    <div class="ewallet-hint" id="ewalletHint">Enter your registered GCash number</div>
+                  </div>
+                </div>
+                <div class="form-group full" style="margin-top:14px">
+                  <label id="ewalletLabel">GCash Number *</label>
+                  <input type="tel" id="ewalletNumber" placeholder="+63 917 123 4567"
+                    maxlength="13" autocomplete="tel">
+                </div>
+                <div class="ewallet-note">
+                  💡 You will receive a payment prompt on your <span id="ewalletApp">GCash</span> app after confirming the booking.
+                </div>
+              </div>
+
+              <!-- Cash Details -->
+              <div class="cash-details" id="cashDetails">
+                <div class="cash-info">
+                  <div class="cash-badge">📋 Pay on Arrival</div>
+                  <p class="cash-desc">
+                    Your booking will be held and confirmed. Full payment is due upon check-in at the destination.
+                    Please bring the exact amount in Philippine Peso (PHP).
+                  </p>
+                  <div class="cash-steps">
+                    <div class="cash-step"><span>1</span> Booking confirmed instantly</div>
+                    <div class="cash-step"><span>2</span> Bring your booking reference</div>
+                    <div class="cash-step"><span>3</span> Pay in cash at check-in</div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+            <!-- /payment-section -->
+
             <button class="submit-btn" onclick="submitBooking()">🌴 &nbsp;Confirm Booking</button>
           </div>
           <!-- /tab-booking -->
@@ -312,14 +438,12 @@
 
   </div><!-- /app -->
 
-  <!-- ══ TOAST NOTIFICATION ══════════════════════════════════════ -->
+  <!-- ══ TOAST NOTIFICATION ══ -->
   <div class="toast" id="toast">
     <div class="toast-title" id="toastTitle"></div>
     <div class="toast-msg"   id="toastMsg"></div>
   </div>
 
-  <!-- JavaScript (must be last — depends on DOM being ready) -->
   <script src="app.js"></script>
-
 </body>
 </html>
